@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Container PHP-FPM (Laravel Engine)
+  backend_app:
+    build:
+      context: ./pos-backend
+      dockerfile: docker/Dockerfile
+    container_name: pos_backend_app
+    restart: unless-stopped
+    volumes:
+      - ./pos-backend:/var/www
+    networks:
+      - pos_network
+
+  # Container Nginx Web Server (Pintu masuk Backend API)
+  backend_webserver:
+    image: nginx:alpine
+    container_name: pos_backend_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./pos-backend:/var/www
+      - ./pos-backend/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend_app
+    networks:
+      - pos_network
+
+  # Container Database MySQL
+  db:
+    image: mysql:8.0
+    container_name: pos_db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: pos_database
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - pos_network
+
+  # Container Frontend Vue.js
+  frontend:
+    build:
+      context: ./pos-frontend
+      dockerfile: Dockerfile
+    container_name: pos_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./pos-frontend:/app
+      - /app/node_modules
+    networks:
+      - pos_network
+
+networks:
+  pos_network:
+    driver: bridge
+
+volumes:
+  db_data:
