@@ -1,9 +1,10 @@
 <script setup>
-import homepage from './pages/home.vue'
+//import homepage from './pages/home.vue'
+import login from './login.vue'
 </script>
 
 <template>
-  <homepage />
+  <login />
 </template>
 
 <style scoped>
