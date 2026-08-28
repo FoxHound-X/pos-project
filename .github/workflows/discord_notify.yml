@@ -10,22 +10,75 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - name: Send notification to Discord
         env:
-          DISCORD_WEBHOOK: ${{ secrets.Discord_Webhook }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           REPOSITORY: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           AUTHOR: ${{ github.actor }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'No commit message available' }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -X POST \
-            -d '{
+          CHANGED_FILES=$(if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then git diff --name-only HEAD~1 HEAD; else git show --pretty='' --name-only HEAD; fi)
+          FILE_SUMMARY=$(printf '%s\n' "$CHANGED_FILES" | sed '/^$/d' | head -n 12 | sed 's#^#/#' | paste -sd ', ' -)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            FILE_SUMMARY="No files changed"
+          fi
+
+          export FILE_SUMMARY
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repo = os.environ["REPOSITORY"]
+          branch = os.environ["BRANCH"]
+          author = os.environ["AUTHOR"]
+          commit_message = os.environ["COMMIT_MESSAGE"]
+          file_summary = os.environ.get("FILE_SUMMARY", "No files changed")
+
+          payload = {
+              "username": "GitHubReport",
+              "avatar_url": "https://cdn.discordapp.com/embed/avatars/1.png",
               "content": "🚀 Push notification",
               "embeds": [{
-                "title": "Progress Achive",
-                "description": "**Repository:** '"$REPOSITORY"'\n**Branch:** '"$BRANCH"'\n**Author:** '"$AUTHOR"'\n**Commit Message:** '"$COMMIT_MESSAGE"'",
-                "color": 65280
+                  "title": "Progress Archive",
+                  "description": (
+                      f"**Repository:** {repo}\n"
+                      f"**Branch:** {branch}\n"
+                      f"**Author:** {author}\n"
+                      f"**Commit:** {commit_message}"
+                  ),
+                  "color": 65280,
+                  "fields": [
+                      {
+                          "name": "📁 Changed files",
+                          "value": file_summary,
+                          "inline": False
+                      },
+                      {
+                          "name": "🧭 Update type",
+                          "value": "Code / project changes pushed to repository",
+                          "inline": True
+                      }
+                  ]
               }]
-            }' \
-            "$DISCORD_WEBHOOK"
+          }
+
+          webhook = os.environ["DISCORD_WEBHOOK"]
+          data = json.dumps(payload).encode("utf-8")
+          request = urllib.request.Request(
+              webhook,
+              data=data,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+
+          with urllib.request.urlopen(request, timeout=30) as response:
+              print(f"Discord status: {response.status}")
+          PY
