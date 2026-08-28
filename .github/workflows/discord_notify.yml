@@ -1,0 +1,23 @@
+name: Discord Push Notification
+
+on:
+  push:
+    branches:
+      - '**' # Berjalan di semua branch
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Notification to Discord
+        uses: ilapak/discord-simple-webhook@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          title: "Progress Achive"
+          description: |
+            **Repository:** ${{ github.repository }}
+            **Branch:** ${{ github.ref_name }}
+            **Author:** ${{ github.actor }}
+            **Commit Message:**
+            ${{ github.event.head_commit.message }}
+          color: 0x00FF00
