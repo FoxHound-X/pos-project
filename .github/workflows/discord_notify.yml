@@ -17,7 +17,7 @@ jobs:
 
       - name: Send notification to Discord
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_WEBHOOK: ${{ secrets.Discord_Webhook }}
           REPOSITORY: ${{ github.repository }}
           BRANCH: ${{ github.ref_name }}
           AUTHOR: ${{ github.actor }}
